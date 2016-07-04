@@ -11,7 +11,7 @@ docker build -t rawmind/alpine-vamp:<version> .
 
 ## Versions
 
-- `0.8.4` [(Dockerfile)](https://github.com/rawmind0/alpine-vamp/blob/0.8.4/Dockerfile)
+- `0.8.4-1` [(Dockerfile)](https://github.com/rawmind0/alpine-vamp/blob/0.8.4-1/Dockerfile)
 
 ## Configuration
 
@@ -25,11 +25,14 @@ Vamp is installed with the default configuration and some parameters can be over
 
 - VAMP_API_PORT=${VAMP_API_PORT:-"8080"}
 - VAMP_DB_TYPE=${VAMP_DB_TYPE:-"elasticsearch"} # elasticsearch or in-memory (no persistence)
-- VAMP_DB_URL=${VAMP_DB_URL:-"http://elasticsearch:9200"}
+- VAMP_DB_PORT=${VAMP_DB_PORT:-"9200"}
+- VAMP_DB_URL=${VAMP_DB_URL:-"http://"${VAMP_DB_TYPE}":"${VAMP_DB_PORT}}
 - VAMP_KEY_TYPE=${VAMP_KEY_TYPE:-"zookeeper"}  # zookeeper, etcd or consul
 - VAMP_KEY_PATH=${VAMP_KEY_PATH:-"/vamp"} # base path for keys, e.g. /vamp/...
-- VAMP_KEY_SERVERS=${VAMP_KEY_SERVERS:-"zookeeper:2181"}
+- VAMP_KEY_PORT=${VAMP_KEY_PORT:-"2181"}
+- VAMP_KEY_SERVERS=${VAMP_KEY_SERVERS:-${VAMP_KEY_TYPE}":"${VAMP_KEY_PORT}}
 - VAMP_HEAP_OPTS=${VAMP_HEAP_OPTS:-"-Xmx1G -Xms1G"}
+- VAMP_DRIVER=${VAMP_DRIVER:-"docker"}
 - VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
 
 The service is started with monit. It's listening at port 8080.

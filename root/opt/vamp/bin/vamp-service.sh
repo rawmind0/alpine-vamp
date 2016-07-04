@@ -43,7 +43,7 @@ function serviceStop {
         pid=$(cat ${SERVICE_PID_FILE})
         rm ${SERVICE_PID_FILE}
     else 
-        pid=$(ps -ef | grep -w `java` | grep -w ${SERVICE_HOME}'/jar/'${SERVICE_RELEASE} | grep -v grep | awk '{print $1}')
+        pid=$(ps -ef | grep -w 'java' | grep -w ${SERVICE_HOME}'/jar/'${SERVICE_RELEASE} | grep -v grep | awk '{print $1}')
     fi
 
     if [ "x$pid" != "x" ]; then 

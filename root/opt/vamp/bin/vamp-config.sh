@@ -2,12 +2,25 @@
 
 VAMP_API_PORT=${VAMP_API_PORT:-"8080"}
 VAMP_DB_TYPE=${VAMP_DB_TYPE:-"elasticsearch"} # elasticsearch or in-memory (no persistence)
-VAMP_DB_URL=${VAMP_DB_URL:-"http://elasticsearch:9200"}
+VAMP_DB_PORT=${VAMP_DB_PORT:-"9200"}
+VAMP_DB_URL=${VAMP_DB_URL:-"http://"${VAMP_DB_TYPE}":"${VAMP_DB_PORT}}
 VAMP_KEY_TYPE=${VAMP_KEY_TYPE:-"zookeeper"}  # zookeeper, etcd or consul
 VAMP_KEY_PATH=${VAMP_KEY_PATH:-"/vamp"} # base path for keys, e.g. /vamp/...
-VAMP_KEY_SERVERS=${VAMP_KEY_SERVERS:-"zookeeper:2181"}
+VAMP_KEY_PORT=${VAMP_KEY_PORT:-"2181"}
+VAMP_KEY_SERVERS=${VAMP_KEY_SERVERS:-${VAMP_KEY_TYPE}":"${VAMP_KEY_PORT}}
 VAMP_HEAP_OPTS=${VAMP_HEAP_OPTS:-"-Xmx1G -Xms1G"}
-VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
+VAMP_DRIVER=${VAMP_DRIVER:-"docker"}
+VAMP_DRIVER_USER=${CATTLE_ACCESS_KEY:-""}
+VAMP_DRIVER_PASS=${CATTLE_SECRET_KEY:-""}
+VAMP_DRIVER_ENV=${VAMP_DRIVER_ENV:-""}
+VAMP_DRIVER_PREFIX=${VAMP_DRIVER_PREFIX:-""}
+
+if [ "$VAMP_DRIVER" == "rancher" ]; then
+  VAMP_DRIVER_ENV=${VAMP_DRIVER_URL}
+  VAMP_DRIVER_URL="${CATTLE_URL}/projects/${VAMP_DRIVER_ENV}"
+elif 
+  VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
+fi
 
 cat << EOF > ${SERVICE_HOME}/conf/application.conf
 vamp {
@@ -43,9 +56,13 @@ vamp {
   }
 
   container-driver {
-    type = "docker"
+    type = "${VAMP_DRIVER}"
     response-timeout = 30 # seconds, timeout for container operations
     url = "${VAMP_DRIVER_URL}"
+    user = "${VAMP_DRIVER_USER}"
+    password = "${VAMP_DRIVER_PASS}"
+    environment.name = "${VAMP_DRIVER_ENV}"
+    environment.deployment.name-prefix = "${VAMP_DRIVER_PREFIX}"
   }
 
   dictionary {
