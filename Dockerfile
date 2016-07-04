@@ -25,4 +25,3 @@ RUN chmod +x ${SERVICE_HOME}/bin/*.sh \
 USER $SERVICE_USER
 WORKDIR $SERVICE_HOME
 
-ENTRYPOINT ${VAMP_HOME}/scripts/start.sh
