@@ -33,7 +33,7 @@
       default: "<XXXXX>"
       required: true
       type: "string"
-    - variable: "vamp_key_type 
+    - variable: "vamp_key_type"
       label: "Vamp key type:"
       description: |
         Vamp key type to use.
