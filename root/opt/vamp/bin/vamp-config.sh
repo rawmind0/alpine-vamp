@@ -18,7 +18,7 @@ VAMP_DRIVER_PREFIX=${VAMP_DRIVER_PREFIX:-""}
 if [ "$VAMP_DRIVER" == "rancher" ]; then
   VAMP_DRIVER_ENV=${VAMP_DRIVER_URL}
   VAMP_DRIVER_URL="${CATTLE_URL}/projects/${VAMP_DRIVER_ENV}"
-elif 
+else 
   VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
 fi
 
