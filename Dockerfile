@@ -3,7 +3,7 @@ MAINTAINER Raul Sanchez <rawmind@gmail.com>
 
 #Set environment
 ENV SERVICE_NAME=vamp \
-    SERVICE_VERSION=0.8.5 \
+    SERVICE_VERSION=0.9.1 \
     SERVICE_REPO=https://bintray.com/artifact/download/magnetic-io/downloads/vamp \
     SERVICE_HOME=/opt/vamp \
     SERVICE_USER=vamp \
