@@ -7,6 +7,7 @@ ENV SERVICE_NAME=vamp \
     SERVICE_REPO=https://bintray.com/artifact/download/magnetic-io/downloads/vamp \
     SERVICE_REPO_UI=https://github.com/magneticio/vamp-ui.git \
     SERVICE_HOME=/opt/vamp \
+    SERVICE_SRC=/opt/src/vamp-ui \
     SERVICE_USER=vamp \
     SERVICE_UID=10006 \
     SERVICE_GROUP=vamp \
