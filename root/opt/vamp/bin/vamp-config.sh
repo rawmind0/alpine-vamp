@@ -13,23 +13,77 @@ VAMP_DRIVER=${VAMP_DRIVER:-"docker"}
 VAMP_DRIVER_USER=${CATTLE_ACCESS_KEY:-""}
 VAMP_DRIVER_PASS=${CATTLE_SECRET_KEY:-""}
 VAMP_DRIVER_ENV=${VAMP_DRIVER_ENV:-""}
-VAMP_DRIVER_PREFIX=${VAMP_DRIVER_PREFIX:-""}
-VAMP_WAIT_FOR =${VAMP_DB_URL}"/_template/logstash"
+VAMP_DRIVER_PREFIX=${VAMP_DRIVER_PREFIX:-"vamp/workflow-"}
+VAMP_WAIT_FOR=${VAMP_DB_URL}"/_template/logstash"
+
+CONTAINER_DRIVER_VALUE="container-driver {
+    type = \"${VAMP_DRIVER}\"
+    response-timeout = 30 # seconds, timeout for container operations
+    ${VAMP_DRIVER} {"
 
 if [ "$VAMP_DRIVER" == "rancher" ]; then
   VAMP_DRIVER_ENV=${VAMP_DRIVER_URL}
   VAMP_DRIVER_URL="${CATTLE_URL}/projects/${VAMP_DRIVER_ENV}"
-else 
+  CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
+      url = \"${VAMP_DRIVER_URL}\"
+      user = \"${VAMP_DRIVER_USER}\"
+      password = \"${VAMP_DRIVER_PASS}\"
+      workflow-name-prefix = \"vamp-workflow-\"
+      environment {
+        name = \"vamp\"
+        deployment.name-prefix = \"${VAMP_DRIVER_PREFIX}\"
+      }
+    }
+  }
+"
+elif [ "$VAMP_DRIVER" == "mesos" ]; then
+  CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
+      url = \"\"
+    }
+    marathon {
+      user = \"\"
+      password = \"\"
+      url = \"\"
+      sse = true
+      workflow-name-prefix = \"vamp-workflow-\"
+    }
+  }
+"
+elif [ "$VAMP_DRIVER" == "docker" ]; then 
   VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
+  CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
+      workflow-name-prefix = \"vamp-workflow-\"
+      repository {
+        email = \"\"
+        username = \"\"
+        password = \"\"
+        server-address = \"\"
+      }
+    }
+  }
+"
+elif [ "$VAMP_DRIVER" == "kubernetes" ]; then 
+  CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
+      url = \"\"
+      workflow-name-prefix = \"vamp-workflow-\"
+      service-type = \"NodePort\"
+      create-services = true
+      vamp-gateway-agent-id = \"vamp-gateway-agent\"
+      token = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"
+    }
+  }
+"
+else
+  CONTAINER_DRIVER_VALUE=""
 fi
 
 if [ "$VAMP_KEY_TYPE" == "zookeeper" ]; then
   KEY_VALUE_DATA="key-value-store {
-      type = "${VAMP_KEY_TYPE}"  # zookeeper, etcd or consul
-      base-path = "${VAMP_KEY_PATH}" # base path for keys, e.g. /vamp/...
+      type = \"${VAMP_KEY_TYPE}\"  # zookeeper, etcd or consul
+      base-path = \"${VAMP_KEY_PATH}\" # base path for keys, e.g. /vamp/...
 
       ${VAMP_KEY_TYPE} {
-        servers = "${VAMP_KEY_SERVERS}"
+        servers = \"${VAMP_KEY_SERVERS}\"
         session-timeout = 5000
         connect-timeout = 5000
       }
@@ -37,11 +91,11 @@ if [ "$VAMP_KEY_TYPE" == "zookeeper" ]; then
 "
 else
   KEY_VALUE_DATA="key-value-store {
-      type = "${VAMP_KEY_TYPE}"  # zookeeper, etcd or consul
-      base-path = "${VAMP_KEY_PATH}" # base path for keys, e.g. /vamp/...
+      type = \"${VAMP_KEY_TYPE}\"  # zookeeper, etcd or consul
+      base-path = \"${VAMP_KEY_PATH}\" # base path for keys, e.g. /vamp/...
 
       ${VAMP_KEY_TYPE} {
-        url = "http://${VAMP_KEY_SERVERS}"
+        url = \"http://${VAMP_KEY_SERVERS}\"
       }
     }
 "
@@ -71,23 +125,11 @@ vamp {
     ${KEY_VALUE_DATA}
   }
 
-  container-driver {
-    type = "${VAMP_DRIVER}"
-    response-timeout = 30 # seconds, timeout for container operations
-    ${VAMP_DRIVER} {
-      url = "${VAMP_DRIVER_URL}"
-      user = "${VAMP_DRIVER_USER}"
-      password = "${VAMP_DRIVER_PASS}"
-      environment {
-        name = "vamp"
-        deployment.name-prefix = "${VAMP_DRIVER_PREFIX}"
-      }
-    }
-  }
+  ${CONTAINER_DRIVER_VALUE}
 
   http-api.ui {
     directory = "${SERVICE_HOME}/ui"
-    index = ${vamp.http-api.ui.directory}"/index.html"
+    index = \${vamp.http-api.ui.directory}"/index.html"
   }
 
   gateway-driver {
@@ -96,7 +138,7 @@ vamp {
   }
 
   workflow-driver {
-    type = "rancher"
+    type = "${VAMP_DRIVER}"
     vamp-url = "http://vamp:8080"
 
     workflow {
@@ -107,8 +149,8 @@ vamp {
         }
       }
       environment-variables = [
-        "VAMP_KEY_VALUE_STORE_TYPE=zookeeper",
-        "VAMP_KEY_VALUE_STORE_CONNECTION=zookeeper:2181"
+        "VAMP_KEY_VALUE_STORE_TYPE=${VAMP_KEY_TYPE}",
+        "VAMP_KEY_VALUE_STORE_CONNECTION=${VAMP_KEY_SERVERS}"
         "WORKFLOW_EXEUTION_PERIOD=0"
         "WORKFLOW_EXEUTION_TIMEOUT=0"
       ]
