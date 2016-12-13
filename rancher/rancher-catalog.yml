@@ -1,10 +1,10 @@
 .catalog:
   name: Vamp
-  version: 0.8.5-rancher1
+  version: 0.9.1-rancher1
   description: |
     (Experimental) Vamp core.
   minimum_rancher_version: v0.59.0
-  maintainer: "Raul Sanchez <raul.sanchez.liebana@bbva.com>"
+  maintainer: "Raul Sanchez <rawmind@gmail.com>"
   uuid: vamp-0
   questions:
     - variable: "vamp_mem"
@@ -19,7 +19,7 @@
         Vamp driver to use.
       default: rancher
       required: true
-      type: enum
+      type: "enum"
       options:
         - rancher
         - kubernetes
@@ -31,7 +31,7 @@
         http://<rancher_server>/env/XXXXX/catalog/ml:vamp?catalogId=ml
       label: "Vamp driver env id"
       default: "<XXXXX>"
-      required: true
+      required: false
       type: "string"
     - variable: "vamp_key_type"
       label: "Vamp key type:"
@@ -39,7 +39,7 @@
         Vamp key type to use.
       default: zookeeper
       required: true
-      type: enum
+      type: "enum"
       options:
         - zookeeper
         - etcd
@@ -69,7 +69,7 @@
         Vamp db type to use.
       default: elasticsearch
       required: true
-      type: enum
+      type: "enum"
       options:
         - elasticsearch
     - variable: "vamp_db_port"
@@ -85,6 +85,34 @@
       default: "elasticsearch/elasticsearch-masters"
       required: true
       type: "service"
+    - variable: "host_label"
+      description: "Host label where to run vamp gateway agent."
+      label: "Host label:"
+      required: true
+      default: "vga=true" 
+      type: "string"
+    - variable: "vamp_logstash"
+      description: |
+        Choose the logstash service to use.
+      label: "Logstash stack/service"
+      default: "logstash/logstash-collector"
+      required: true
+      type: "service"
+    - variable: "vamp_logstash_port"
+      description: "Vga port to connect to logstash"
+      label: "Vga logstash port:"
+      required: true
+      default: 10001
+      type: "int"
+vamp-gateway:
+  retain_ip: true
+  health_check:
+    port: 1988
+    interval: 5000
+    unhealthy_threshold: 3
+    strategy: recreate
+    healthy_threshold: 2
+    response_timeout: 5000
 vamp:
   scale: 1
   retain_ip: true
@@ -105,3 +133,4 @@ vamp-ui:
     strategy: recreate
     healthy_threshold: 2
     response_timeout: 5000
+

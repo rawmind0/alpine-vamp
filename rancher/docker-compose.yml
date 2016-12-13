@@ -4,7 +4,7 @@ vamp:
     VAMP_DB_PORT: "${vamp_db_port}"
     VAMP_KEY_TYPE: "${vamp_key_type}"
     VAMP_KEY_PORT: "${vamp_key_port}"
-    VAMP_KEY_PATH=${VAMP_KEY_PATH: "${vamp_key_path}"
+    VAMP_KEY_PATH: "${vamp_key_path}"
     VAMP_HEAP_OPTS: "-Xmx${vamp_mem}G -Xms${vamp_mem}G"
     VAMP_DRIVER: "${vamp_driver}"
     VAMP_DRIVER_URL: "${vamp_driver_url}"
@@ -22,7 +22,19 @@ vamp-ui:
   external_links:
   - vamp:vamp
   tty: true
-  image: rawmind/alpine-vamp-ui:0.9.1
+  image: rawmind/alpine-vamp-ui:0.9.1-1
   labels:
     io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
     io.rancher.container.hostname_override: container_name
+vamp-gateway:
+  external_links:
+  - ${vamp_key}:${vamp_key_type}
+  - ${vamp_logstash}:logstash
+  labels:
+    io.rancher.scheduler.global: 'true'
+    io.rancher.scheduler.affinity:host_label: ${host_label}
+    io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=$${stack_name}/$${service_name}
+    io.rancher.container.hostname_override: container_name
+  tty: true
+  image: magneticio/vamp-gateway-agent:0.9.1
+  command: ["-logstash", "logstash:${vamp_logstash_port}", "-storeConnection", "${vamp_key_type}:${vamp_key_port}", "-storeType", "${vamp_key_type}"]

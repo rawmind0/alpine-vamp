@@ -14,12 +14,37 @@ VAMP_DRIVER_USER=${CATTLE_ACCESS_KEY:-""}
 VAMP_DRIVER_PASS=${CATTLE_SECRET_KEY:-""}
 VAMP_DRIVER_ENV=${VAMP_DRIVER_ENV:-""}
 VAMP_DRIVER_PREFIX=${VAMP_DRIVER_PREFIX:-""}
+VAMP_WAIT_FOR =${VAMP_DB_URL}"/_template/logstash"
 
 if [ "$VAMP_DRIVER" == "rancher" ]; then
   VAMP_DRIVER_ENV=${VAMP_DRIVER_URL}
   VAMP_DRIVER_URL="${CATTLE_URL}/projects/${VAMP_DRIVER_ENV}"
 else 
   VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"unix:///var/run/docker.sock"}
+fi
+
+if [ "$VAMP_KEY_TYPE" == "zookeeper" ]; then
+  KEY_VALUE_DATA="key-value-store {
+      type = "${VAMP_KEY_TYPE}"  # zookeeper, etcd or consul
+      base-path = "${VAMP_KEY_PATH}" # base path for keys, e.g. /vamp/...
+
+      ${VAMP_KEY_TYPE} {
+        servers = "${VAMP_KEY_SERVERS}"
+        session-timeout = 5000
+        connect-timeout = 5000
+      }
+    }
+"
+else
+  KEY_VALUE_DATA="key-value-store {
+      type = "${VAMP_KEY_TYPE}"  # zookeeper, etcd or consul
+      base-path = "${VAMP_KEY_PATH}" # base path for keys, e.g. /vamp/...
+
+      ${VAMP_KEY_TYPE} {
+        url = "http://${VAMP_KEY_SERVERS}"
+      }
+    }
+"
 fi
 
 cat << EOF > ${SERVICE_HOME}/conf/application.conf
@@ -36,128 +61,92 @@ vamp {
     database {
       type = "${VAMP_DB_TYPE}" # elasticsearch or in-memory (no persistence)
 
-      elasticsearch {
+      ${VAMP_DB_TYPE} {
         url = "${VAMP_DB_URL}"
         response-timeout = 5 # seconds, timeout for elasticsearch operations
         index = "vamp-persistence"
       }
     }
 
-    key-value-store {
-      type = "${VAMP_KEY_TYPE}"  # zookeeper, etcd or consul
-      base-path = "${VAMP_KEY_PATH}" # base path for keys, e.g. /vamp/...
-
-      ${VAMP_KEY_TYPE} {
-        servers = "${VAMP_KEY_SERVERS}"
-        session-timeout = 5000
-        connect-timeout = 5000
-      }
-    }
+    ${KEY_VALUE_DATA}
   }
 
   container-driver {
     type = "${VAMP_DRIVER}"
     response-timeout = 30 # seconds, timeout for container operations
-    url = "${VAMP_DRIVER_URL}"
-    user = "${VAMP_DRIVER_USER}"
-    password = "${VAMP_DRIVER_PASS}"
-    environment.name = "${VAMP_DRIVER_ENV}"
-    environment.deployment.name-prefix = "${VAMP_DRIVER_PREFIX}"
+    ${VAMP_DRIVER} {
+      url = "${VAMP_DRIVER_URL}"
+      user = "${VAMP_DRIVER_USER}"
+      password = "${VAMP_DRIVER_PASS}"
+      environment {
+        name = "vamp"
+        deployment.name-prefix = "${VAMP_DRIVER_PREFIX}"
+      }
+    }
   }
 
-  dictionary {
-    default-scale {
-      instances: 1
-      cpu: 1
-      memory: 1GB
-    }
-    response-timeout = 5 # seconds, timeout for container operations
-  }
-
-  rest-api {
-    interface = 0.0.0.0
-    host = localhost
-    port = ${VAMP_API_PORT}
-    response-timeout = 10 # seconds, HTTP response time out
-    sse {
-      keep-alive-timeout = 15 # seconds, timeout after an empty comment (":\n") will be sent in order keep connection alive
-    }
+  http-api.ui {
+    directory = "${SERVICE_HOME}/ui"
+    index = ${vamp.http-api.ui.directory}"/index.html"
   }
 
   gateway-driver {
-    host = "localhost" # note: host of cluster hosts will have this value (e.g. db.host)
-    response-timeout = 30 # seconds, timeout for gateway operations
-
-    haproxy {
-      tcp-log-format  = """{\"ci\":\"%ci\",\"cp\":%cp,\"t\":\"%t\",\"ft\":\"%ft\",\"b\":\"%b\",\"s\":\"%s\",\"Tw\":%Tw,\"Tc\":%Tc,\"Tt\":%Tt,\"B\":%B,\"ts\":\"%ts\",\"ac\":%ac,\"fc\":%fc,\"bc\":%bc,\"sc\":%sc,\"rc\":%rc,\"sq\":%sq,\"bq\":%bq}"""
-      http-log-format = """{\"ci\":\"%ci\",\"cp\":%cp,\"t\":\"%t\",\"ft\":\"%ft\",\"b\":\"%b\",\"s\":\"%s\",\"Tq\":%Tq,\"Tw\":%Tw,\"Tc\":%Tc,\"Tr\":%Tr,\"Tt\":%Tt,\"ST\":%ST,\"B\":%B,\"CC\":\"%CC\",\"CS\":\"%CS\",\"tsc\":\"%tsc\",\"ac\":%ac,\"fc\":%fc,\"bc\":%bc,\"sc\":%sc,\"rc\":%rc,\"sq\":%sq,\"bq\":%bq,\"hr\":\"%hr\",\"hs\":\"%hs\",\"r\":%{+Q}r}"""
-    }
-
-    logstash {
-      index = "logstash-*"
-    }
-
-    kibana {
-      enabled = true
-      elasticsearch.url = "${VAMP_DB_URL}"
-      synchronization.period = 5 # seconds, synchronization will be active only if period is greater than 0
-    }
-
-    aggregation {
-      window = 30 # seconds, aggregation will be active only if than 0
-      period = 5  # refresh period in seconds, aggregation will be active only if greater than 0
-    }
+    logstash.host = "logstash"
+    kibana.elasticsearch.url = \${vamp.pulse.elasticsearch.url}
   }
 
-  pulse {
-    elasticsearch {
-      url = "${VAMP_DB_URL}"
-      index {
-        name = "vamp-pulse"
-        time-format.event = "YYYY-MM-dd"
+  workflow-driver {
+    type = "rancher"
+    vamp-url = "http://vamp:8080"
+
+    workflow {
+      deployables = {
+        "application/javascript" = {
+          type = "container/docker"
+          definition = "magneticio/vamp-workflow-agent:katana"
+        }
       }
+      environment-variables = [
+        "VAMP_KEY_VALUE_STORE_TYPE=zookeeper",
+        "VAMP_KEY_VALUE_STORE_CONNECTION=zookeeper:2181"
+        "WORKFLOW_EXEUTION_PERIOD=0"
+        "WORKFLOW_EXEUTION_TIMEOUT=0"
+      ]
+      scale {
+        instances = 1
+        cpu = 0.1
+        memory = 128MB
+      }
+      network = "managed"
     }
-    response-timeout = 30 # seconds, timeout for pulse operations
   }
+
+  pulse.elasticsearch.url = "${VAMP_DB_URL}"
 
   operation {
 
-    synchronization {
-      initial-delay = 5 # seconds
-      period = 4 # seconds, synchronization will be active only if period is greater than 0
+    synchronization.period = 3 seconds
 
-      mailbox {
-        // Until we get available akka.dispatch.NonBlockingBoundedMailbox
-        mailbox-type = "akka.dispatch.BoundedMailbox"
-        mailbox-capacity = 10
-        mailbox-push-timeout-time = 0s
+    deployment {
+      scale {
+        instances: 1
+        cpu: 0.2
+        memory: 256MB
       }
-
-      timeout {
-        ready-for-deployment =  600 # seconds
-        ready-for-undeployment =  600 # seconds
-      }
-    }
-
-    gateway {
-      port-range = 40000-45000
-      response-timeout = 5 # seconds, timeout for container operations
-    }
-
-    sla.period = 5 # seconds, sla monitor period
-    escalation.period = 5 # seconds, escalation monitor period
-
-    workflow {
-      http {
-        timeout = 30 # seconds, maximal http request waiting time
-      }
-      info {
-        timeout = 10 // seconds
-        component-timeout = 5 // seconds
-      }
+      arguments: [
+        "privileged=true"
+      ]
     }
   }
 
+  lifter.artifact.resources = [
+    "breeds/health.js",
+    "workflows/health.yml",
+    "breeds/metrics.js",
+    "workflows/metrics.yml",
+    "breeds/kibana.js",
+    "workflows/kibana.yml"
+  ]
 }
 EOF
 
