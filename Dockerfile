@@ -1,10 +1,10 @@
-FROM rawmind/alpine-jvm8:1.8.102-2
+FROM rawmind/alpine-jvm8:1.8.112
 MAINTAINER Raul Sanchez <rawmind@gmail.com>
 
 #Set environment
 ENV SERVICE_NAME=vamp \
-    SERVICE_VERSION=0.9.1 \
-    SERVICE_REPO=https://bintray.com/artifact/download/magnetic-io/downloads/vamp \
+    SERVICE_VERSION=0.9.2 \
+    SERVICE_REPO=https://dl.bintray.com/magnetic-io/downloads \
     SERVICE_REPO_UI=https://github.com/magneticio/vamp-ui.git \
     SERVICE_HOME=/opt/vamp \
     SERVICE_SRC=/opt/src/vamp-ui \

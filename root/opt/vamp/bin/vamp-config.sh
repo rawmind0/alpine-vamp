@@ -37,13 +37,15 @@ if [ "$VAMP_DRIVER" == "rancher" ]; then
   }
 "
 elif [ "$VAMP_DRIVER" == "mesos" ]; then
+  VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-"mesos-master:5050"}
+  MARATHON_URL=${MARATHON_URL:-"marathon.marathon:8080"}
   CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
-      url = \"\"
+      url = \"http://${VAMP_DRIVER_URL}\"
     }
     marathon {
       user = \"\"
       password = \"\"
-      url = \"\"
+      url = \"http://${MARATHON_URL}\"
       sse = true
       workflow-name-prefix = \"vamp-workflow-\"
     }
@@ -63,8 +65,9 @@ elif [ "$VAMP_DRIVER" == "docker" ]; then
   }
 "
 elif [ "$VAMP_DRIVER" == "kubernetes" ]; then 
+  VAMP_DRIVER_URL=${VAMP_DRIVER_URL:-${KUBERNETES_SERVICE_HOST}":"${KUBERNETES_PORT_443_TCP_PORT}}
   CONTAINER_DRIVER_VALUE="$CONTAINER_DRIVER_VALUE
-      url = \"\"
+      url = \"https://${VAMP_DRIVER_URL}\"
       workflow-name-prefix = \"vamp-workflow-\"
       service-type = \"NodePort\"
       create-services = true
